@@ -1,17 +1,25 @@
-name: Scraper
+name: Ghana News Scraper
+
 on:
   schedule:
-    - cron: '*/15 * * * *'  # every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - run: pip install -r requirements_scraper.txt
-      - run: python rss_scraper.py
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements_scraper.txt
+
+      - name: Run scraper
+        run: python backend/rss_scraper.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
