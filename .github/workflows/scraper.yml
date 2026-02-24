@@ -1,0 +1,17 @@
+name: Scraper
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # every 15 minutes
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements_scraper.txt
+      - run: python rss_scraper.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
