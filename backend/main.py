@@ -79,7 +79,6 @@ def share_article(article_id: str):
 
 @app.get("/api/search")
 def search_articles(q: str = Query(..., min_length=2), limit: int = 10):
-    # Full-text search via Supabase (requires pg_trgm or FTS enabled)
     result = supabase.rpc("search_articles", {"query": q, "result_limit": limit}).execute()
     return {"results": result.data}
 
@@ -108,13 +107,7 @@ def get_categories():
 
 @app.post("/api/chat")
 def chat_search(req: ChatRequest):
-    """
-    Simple RAG-style chatbot: search articles, return structured answer.
-    For production, replace with Ollama/Llama3 RAG pipeline.
-    """
     query = req.query.lower()
-
-    # Search relevant articles
     result = supabase.rpc("search_articles", {"query": query, "result_limit": 5}).execute()
     articles = result.data or []
 
@@ -126,21 +119,61 @@ def chat_search(req: ChatRequest):
 
     sources = [{"title": a["title"], "url": a["url"], "source": a["source"]} for a in articles[:3]]
     top = articles[0]
-
     answer = (
         f"Here's what I found about '{req.query}': "
         f"{top['summary']} "
         f"— reported by {top['source']}."
     )
-
     return {"answer": answer, "sources": sources}
 
 
 @app.get("/api/sitemap")
 def sitemap():
-    """Returns article URLs for sitemap generation."""
     result = supabase.table("articles").select("id,published_at").order("published_at", desc=True).limit(1000).execute()
     return result.data
+
+
+@app.get("/api/status")
+def api_status():
+    """Live system status — article count and last scrape time."""
+    article_count = 0
+    last_scrape = None
+    error = None
+    try:
+        # Fetch minimal data to count rows
+        rows = supabase.table("articles").select("id, created_at").order("created_at", desc=True).limit(1000).execute()
+        article_count = len(rows.data) if rows.data else 0
+        if rows.data:
+            last_scrape = rows.data[0].get("created_at")
+    except Exception as e:
+        error = str(e)
+
+    return {
+        "article_count": article_count,
+        "last_scrape": last_scrape,
+        "status": "error" if error else "ok",
+        "error": error,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.post("/api/scrape")
+def run_scrape():
+    """Manually trigger a scrape cycle from the admin panel."""
+    import threading
+    results = {"new_articles": 0, "error": None}
+
+    def do_scrape():
+        try:
+            from rss_scraper import scrape_all_feeds
+            scrape_all_feeds()
+        except Exception as e:
+            results["error"] = str(e)
+
+    t = threading.Thread(target=do_scrape, daemon=True)
+    t.start()
+    t.join(timeout=25)
+    return {"ok": True, "new_articles": results["new_articles"], "error": results["error"]}
 
 
 @app.get("/health")
