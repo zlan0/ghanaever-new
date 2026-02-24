@@ -426,25 +426,57 @@ function buildCard(article, index = 0) {
 }
 
 /* ── Sidebar Builder ───────────────────────────────────────────────── */
+/* ── Sidebar Builder ───────────────────────────────────────────────── */
 const SIDEBAR_SECTIONS = [
-  { id:'all',           label:'All News',      icon: ICONS.home,     count:24 },
-  { id:'politics',      label:'Politics',      icon: ICONS.politics, count:6  },
-  { id:'business',      label:'Business',      icon: ICONS.business, count:5  },
-  { id:'sports',        label:'Sports',        icon: ICONS.sports,   count:4  },
-  { id:'tech',          label:'Tech',          icon: ICONS.tech,     count:4  },
-  { id:'health',        label:'Health',        icon: ICONS.health,   count:3  },
-  { id:'entertainment', label:'Entertainment', icon: ICONS.ent,      count:3  },
-  { id:'world',         label:'World',         icon: ICONS.world,    count:2  },
+  { id:'all',           label:'All News',      icon: ICONS.home     },
+  { id:'politics',      label:'Politics',      icon: ICONS.politics },
+  { id:'business',      label:'Business',      icon: ICONS.business },
+  { id:'sports',        label:'Sports',        icon: ICONS.sports   },
+  { id:'tech',          label:'Tech',          icon: ICONS.tech     },
+  { id:'health',        label:'Health',        icon: ICONS.health   },
+  { id:'entertainment', label:'Entertainment', icon: ICONS.ent      },
+  { id:'world',         label:'World',         icon: ICONS.world    },
+  { id:'general',       label:'General',       icon: ICONS.news     },
 ];
 
+// Live counts fetched from API — keyed by category id
+let _sidebarCounts = {};
+
+async function fetchSidebarCounts() {
+  // Reuse the articles already loaded if available, otherwise hit the API
+  // We fetch a large page to count categories client-side
+  const data = await apiFetch('/api/articles?category=all&limit=200&sort=recent');
+  if (!data?.articles) return;
+
+  const counts = { all: data.articles.length };
+  for (const article of data.articles) {
+    const cat = article.category || 'general';
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+  _sidebarCounts = counts;
+
+  // Update counts in the already-rendered sidebar without rebuilding it
+  SIDEBAR_SECTIONS.forEach(s => {
+    const countEl = document.querySelector(`.sidebar-btn[data-cat="${s.id}"] .s-count`);
+    if (countEl) {
+      const n = _sidebarCounts[s.id];
+      countEl.textContent = n !== undefined ? n : '';
+    }
+  });
+}
+
 function buildSidebar(activeCategory = 'all', activeRegion = 'ghana') {
-  const sections = SIDEBAR_SECTIONS.map(s => `
+  const sections = SIDEBAR_SECTIONS.map(s => {
+    const count = _sidebarCounts[s.id];
+    return `
     <button class="sidebar-btn${s.id === activeCategory ? ' active' : ''}"
+            data-cat="${s.id}"
             onclick="filterCategory('${s.id}',this)">
       <span class="si">${s.icon}</span>
       ${s.label}
-      <span class="s-count">${s.count}</span>
-    </button>`).join('');
+      <span class="s-count">${count !== undefined ? count : ''}</span>
+    </button>`;
+  }).join('');
 
   const regions = ['ghana','africa','global'].map(r => `
     <button class="region-btn${r === activeRegion ? ' active' : ''}"
