@@ -28,6 +28,14 @@
   <div id="trendingRoot"></div>
 </div>
 <div id="chatRoot"></div>
+<script>
+  try {
+    var cfg = JSON.parse(localStorage.getItem('gf_site_config') || '{}');
+    window.API_BASE = cfg.apiBase || 'https://ghanaever-new.onrender.com';
+  } catch(e) {
+    window.API_BASE = 'https://ghanaever-new.onrender.com';
+  }
+</script>
 <script src="../js/app.js"></script>
 <script>
   const CAT='world', LABEL='World';
