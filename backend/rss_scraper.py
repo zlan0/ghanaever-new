@@ -30,42 +30,163 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 RSS_FEEDS = [
     # Ghana
-    {"name": "CitiNews",      "url": "https://citinewsroom.com/feed/",                          "region": "ghana"},
-    {"name": "JoyOnline",     "url": "https://www.myjoyonline.com/feed/",                        "region": "ghana"},
-    {"name": "GhanaWeb",      "url": "https://www.ghanaweb.com/GhanaHomePage/rss/index.php",     "region": "ghana"},
-    {"name": "Graphic Online","url": "https://www.graphic.com.gh/feed/rss",                      "region": "ghana"},
-    {"name": "GhanaBusinessNews", "url": "https://www.ghanabusinessnews.com/feed/",              "region": "ghana"},
+    {"name": "CitiNews",          "url": "https://citinewsroom.com/feed/",                          "region": "ghana"},
+    {"name": "JoyOnline",         "url": "https://www.myjoyonline.com/feed/",                        "region": "ghana"},
+    {"name": "GhanaWeb",          "url": "https://www.ghanaweb.com/GhanaHomePage/rss/index.php",     "region": "ghana"},
+    {"name": "Graphic Online",    "url": "https://www.graphic.com.gh/feed/rss",                      "region": "ghana"},
+    {"name": "GhanaBusinessNews", "url": "https://www.ghanabusinessnews.com/feed/",                  "region": "ghana"},
     # African/Global
-    {"name": "BBC Africa",    "url": "http://feeds.bbci.co.uk/news/world/africa/rss.xml",        "region": "africa"},
-    {"name": "Reuters Africa","url": "https://feeds.reuters.com/reuters/AFRICANews",             "region": "africa"},
-    {"name": "Al Jazeera",    "url": "https://www.aljazeera.com/xml/rss/all.xml",                "region": "global"},
+    {"name": "BBC Africa",        "url": "http://feeds.bbci.co.uk/news/world/africa/rss.xml",        "region": "africa"},
+    {"name": "Reuters Africa",    "url": "https://feeds.reuters.com/reuters/AFRICANews",             "region": "africa"},
+    {"name": "Al Jazeera",        "url": "https://www.aljazeera.com/xml/rss/all.xml",                "region": "global"},
 ]
 
+# ─── Categorization ───────────────────────────────────────────────────────────
+# Each category has:
+#   "strong"  — high-confidence keywords (worth 3 points each)
+#   "weak"    — supporting keywords (worth 1 point each)
+# A minimum score threshold prevents weak/accidental matches defaulting to tech.
+
 CATEGORIES = {
-    "politics":      ["election", "parliament", "president", "government", "minister", "ndc", "npp", "vote", "akufo", "mahama", "policy"],
-    "business":      ["economy", "cedi", "ghana stock", "business", "investment", "gdp", "inflation", "bank", "trade", "revenue", "tax"],
-    "sports":        ["black stars", "football", "soccer", "athletics", "olympics", "sports", "league", "goal", "match", "tournament"],
-    "tech":          ["technology", "mobile", "internet", "startup", "fintech", "app", "digital", "ai", "cyber", "software", "innovation"],
-    "health":        ["health", "hospital", "disease", "covid", "malaria", "clinic", "medicine", "who", "vaccine", "outbreak"],
-    "entertainment": ["music", "movie", "celebrity", "arts", "culture", "fashion", "award", "entertainment", "festival", "concert"],
-    "world":         ["international", "usa", "europe", "china", "uk", "global", "united nations", "war", "sanctions", "treaty"],
+    "politics": {
+        "strong": [
+            "election", "parliament", "president", "prime minister", "government",
+            "minister", "ndc", "npp", "senator", "akufo-addo", "mahama", "ballot",
+            "constituency", "lawmaker", "legislature", "coup", "cabinet", "policy",
+            "referendum", "democratic", "opposition", "ruling party", "mp ", "mps ",
+            "member of parliament", "speaker of parliament", "attorney general",
+            "political", "petition mahama", "petition akufo",
+        ],
+        "weak": [
+            "vote", "campaign", "governance", "regulation", "law", "bill passed",
+            "corruption", "accountability", "protest", "demonstration", "judiciary",
+        ],
+    },
+    "business": {
+        "strong": [
+            "economy", "cedi", "ghana stock exchange", "gse", "investment",
+            "gdp", "inflation", "bank of ghana", "imf", "world bank", "trade",
+            "revenue", "tax", "fiscal", "monetary", "interest rate", "stock",
+            "bond", "finance minister", "budget", "debt", "forex", "export",
+            "import", "cocoa board", "ghana cocoa", "trade surplus", "trade deficit",
+            "entrepreneur", "startup funding", "series a", "series b", "ipo",
+        ],
+        "weak": [
+            "business", "market", "profit", "loss", "revenue", "growth",
+            "economic", "financial", "quarter", "annual", "billion", "million",
+            "fund", "donation", "investment drive",
+        ],
+    },
+    "sports": {
+        "strong": [
+            "black stars", "ghana football", "gfa", "premier league ghana",
+            "afcon", "world cup", "olympics", "commonwealth games",
+            "asante kotoko", "hearts of oak", "accra lions",
+            "athletics", "marathon", "boxing", "wrestling", "swimming",
+            "cricket", "rugby", "basketball", "tennis", "volleyball",
+            "transfer", "signed", "manager sacked", "coach appointed",
+            "goal", "match", "tournament", "champion", "trophy",
+            "fifa", "caf ", "uefa",
+        ],
+        "weak": [
+            "sports", "football", "soccer", "league", "club", "player",
+            "team", "score", "fixture", "squad", "game", "defeat", "win", "draw",
+        ],
+    },
+    "tech": {
+        "strong": [
+            "artificial intelligence", " ai ", "machine learning", "blockchain",
+            "cryptocurrency", "bitcoin", "fintech", "cybersecurity", "data breach",
+            "5g", "software launch", "app launch", "tech startup", "google",
+            "apple ", "microsoft", "meta ", "amazon web", "cloud computing",
+            "robotics", "drone", "satellite", "programming", "developer",
+            "open source", "silicon", "semiconductor", "data centre", "iso/iec",
+        ],
+        "weak": [
+            "technology", "digital", "mobile", "internet", "innovation",
+            "platform", "online", "website", "cyber", "software",
+        ],
+    },
+    "health": {
+        "strong": [
+            "hospital", "disease", "covid", "malaria", "clinic", "vaccine",
+            "outbreak", "epidemic", "pandemic", "surgery", "diagnosis",
+            "treatment", "medicine", "doctor", "nurse", "patient",
+            "ghana health service", "ministry of health", "who ", "world health",
+            "nhis", "national health", "public health", "mortality",
+            "hiv", "aids", "tuberculosis", "cancer", "diabetes",
+            "mental health", "ambulance", "emergency care", "no bed",
+            "dialysis", "hpv", "immunization", "vaccination programme",
+        ],
+        "weak": [
+            "health", "medical", "wellness", "nutrition", "drug",
+            "pharmacy", "research", "clinical", "therapy",
+        ],
+    },
+    "entertainment": {
+        "strong": [
+            "music video", "album", "concert", "award show", "grammy",
+            "ghana music awards", "vgma", "afrobeats", "hiplife", "highlife",
+            "movie", "film", "nollywood", "actor", "actress", "celebrity",
+            "fashion week", "runway", "reality show", "tv series",
+            "spotify ghana", "youtube", "black sherif", "sarkodie", "stonebwoy",
+            "kuami eugene", "shatta wale", "medikal",
+        ],
+        "weak": [
+            "entertainment", "music", "arts", "culture", "festival",
+            "performance", "tour", "release", "single", "fan",
+        ],
+    },
+    "world": {
+        "strong": [
+            "united nations", "un security council", "nato", "european union",
+            "white house", "us president", "russia", "ukraine", "israel",
+            "palestin", "iran", "china ", "north korea", "trump", "biden",
+            "sanctions", "treaty", "diplomacy", "foreign minister",
+            "g7", "g20", "imf ", "world bank", "refugee", "war crimes",
+            "ceasefire", "military strike", "nuclear", "coup d'etat",
+            "africom", "un delegates",
+        ],
+        "weak": [
+            "international", "global", "world", "usa", "europe",
+            "washington", "london", "paris", "beijing", "overseas",
+        ],
+    },
 }
 
-# ─── Categorization (keyword-only, no ML model) ──────────────────────────────
+# Minimum score required to assign a category (prevents weak 1-point matches)
+MIN_SCORE_THRESHOLD = 2
+
 
 def categorize_article(title: str, summary: str) -> str:
     text = f"{title} {summary}".lower()
     scores = {}
-    for category, keywords in CATEGORIES.items():
-        scores[category] = sum(1 for kw in keywords if kw in text)
-    best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else "general"
+
+    for category, kw_groups in CATEGORIES.items():
+        score = 0
+        for kw in kw_groups.get("strong", []):
+            if kw in text:
+                score += 3
+        for kw in kw_groups.get("weak", []):
+            if kw in text:
+                score += 1
+        scores[category] = score
+
+    best_cat = max(scores, key=scores.get)
+    best_score = scores[best_cat]
+
+    if best_score < MIN_SCORE_THRESHOLD:
+        return "general"
+
+    return best_cat
+
 
 # ─── Trending Score ──────────────────────────────────────────────────────────
 
 def trending_score(views: int, shares: int, hours_old: float) -> float:
     recency = 1 / max(hours_old, 0.1)
     return 0.6 * views + 0.3 * shares + 0.1 * recency
+
 
 # ─── Image Extraction ────────────────────────────────────────────────────────
 
@@ -83,6 +204,7 @@ def extract_image(entry) -> Optional[str]:
             return img["src"]
     return None
 
+
 # ─── Affiliate Link Insertion ─────────────────────────────────────────────────
 
 AFFILIATE_TRIGGERS = {
@@ -97,6 +219,7 @@ AFFILIATE_TRIGGERS = {
 def insert_affiliates(content: str) -> dict:
     return {trigger: url for trigger, url in AFFILIATE_TRIGGERS.items() if trigger in content.lower()}
 
+
 # ─── Deduplication ───────────────────────────────────────────────────────────
 
 def title_hash(title: str) -> str:
@@ -105,6 +228,21 @@ def title_hash(title: str) -> str:
 def already_exists(thash: str) -> bool:
     result = supabase.table("articles").select("id").eq("title_hash", thash).execute()
     return len(result.data) > 0
+
+
+# ─── Recategorize existing articles ──────────────────────────────────────────
+
+def recategorize_existing():
+    """Re-run categorization on all existing articles to fix bad categories."""
+    log.info("Recategorizing existing articles...")
+    articles = supabase.table("articles").select("id,title,summary").execute().data
+    fixed = 0
+    for art in articles:
+        new_cat = categorize_article(art.get("title", ""), art.get("summary", ""))
+        supabase.table("articles").update({"category": new_cat}).eq("id", art["id"]).execute()
+        fixed += 1
+    log.info(f"Recategorized {fixed} articles.")
+
 
 # ─── Core Scrape Loop ────────────────────────────────────────────────────────
 
@@ -141,7 +279,9 @@ def scrape_all_feeds():
                 affiliate_map = insert_affiliates(f"{title} {summary}")
 
                 hours_old = max(
-                    (datetime.now(timezone.utc) - datetime.fromisoformat(published_at.replace("Z", "+00:00"))).total_seconds() / 3600,
+                    (datetime.now(timezone.utc) - datetime.fromisoformat(
+                        published_at.replace("Z", "+00:00")
+                    )).total_seconds() / 3600,
                     0.01
                 )
 
@@ -164,7 +304,7 @@ def scrape_all_feeds():
 
                 supabase.table("articles").insert(article).execute()
                 new_count += 1
-                log.info(f"  ✓ Inserted: {title[:60]}")
+                log.info(f"  ✓ [{category}] {title[:60]}")
 
         except Exception as e:
             log.error(f"[{feed_meta['name']}] Error: {e}")
@@ -192,8 +332,9 @@ def update_trending_scores():
 
 if __name__ == "__main__":
     log.info("Ghana News Scraper Bot starting...")
-    scrape_all_feeds()          # run immediately on start
-    update_trending_scores()    # update scores immediately too
+    scrape_all_feeds()
+    recategorize_existing()   # fix any previously miscategorized articles
+    update_trending_scores()
 
     schedule.every(5).minutes.do(scrape_all_feeds)
     schedule.every(1).hours.do(update_trending_scores)
