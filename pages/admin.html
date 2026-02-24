@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — GhanaFront</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="admin-body">
+
+<!-- Login Gate -->
+<div id="loginGate" class="login-gate">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark" style="width:40px;height:40px;border-radius:8px;position:relative;overflow:hidden;margin:0 auto 12px">
+        <div class="logo-mark-bg"></div>
+        <div class="logo-mark-letter" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:100%;font-family:'Playfair Display',serif;font-weight:800;font-size:22px;color:#fff">G</div>
+      </div>
+      <h1 class="login-title">GhanaFront Admin</h1>
+      <p class="login-subtitle">Sign in to manage your site</p>
+    </div>
+    <form onsubmit="adminLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="loginEmail" placeholder="admin@ghanafront.com" value="admin@ghanafront.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" value="admin123">
+      </div>
+      <div id="loginError" class="login-error" style="display:none">Incorrect email or password</div>
+      <button type="submit" class="form-btn form-btn-ad" style="width:100%;margin-top:8px">Sign In</button>
+    </form>
+    <p style="font-size:11px;color:var(--subtle);text-align:center;margin-top:14px">Default: admin@ghanafront.com / admin123</p>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel" class="admin-panel" style="display:none">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-brand">
+      <div class="logo-mark" style="width:28px;height:28px;border-radius:5px;position:relative;overflow:hidden;flex-shrink:0">
+        <div class="logo-mark-bg"></div>
+        <div class="logo-mark-letter" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:100%;font-family:'Playfair Display',serif;font-weight:800;font-size:15px;color:#fff">G</div>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:13px;line-height:1.2" id="adminSiteName">GhanaFront</div>
+        <div style="font-size:10px;color:var(--subtle)">Admin Panel</div>
+      </div>
+    </div>
+    <nav class="admin-nav">
+      <button class="admin-nav-item active" data-tab="scraper" onclick="switchTab('scraper',this)">
+        <span class="admin-nav-icon" id="iconRss"></span>
+        Scraper Config
+      </button>
+      <button class="admin-nav-item" data-tab="ticker" onclick="switchTab('ticker',this)">
+        <span class="admin-nav-icon" id="iconTicker"></span>
+        Ticker
+      </button>
+      <button class="admin-nav-item" data-tab="breaking" onclick="switchTab('breaking',this)">
+        <span class="admin-nav-icon" id="iconBreaking"></span>
+        Breaking News
+      </button>
+      <button class="admin-nav-item" data-tab="trending" onclick="switchTab('trending',this)">
+        <span class="admin-nav-icon" id="iconTrending"></span>
+        Trending News
+      </button>
+      <button class="admin-nav-item" data-tab="appearance" onclick="switchTab('appearance',this)">
+        <span class="admin-nav-icon" id="iconAppearance"></span>
+        Appearance
+      </button>
+      <button class="admin-nav-item" data-tab="popups" onclick="switchTab('popups',this)">
+        <span class="admin-nav-icon" id="iconPopups"></span>
+        Popup Settings
+      </button>
+      <button class="admin-nav-item" data-tab="menus" onclick="switchTab('menus',this)">
+        <span class="admin-nav-icon" id="iconMenus"></span>
+        Menu Navigation
+      </button>
+      <button class="admin-nav-item" data-tab="general" onclick="switchTab('general',this)">
+        <span class="admin-nav-icon" id="iconGeneral"></span>
+        General Settings
+      </button>
+      <button class="admin-nav-item" data-tab="backend" onclick="switchTab('backend',this)">
+        <span class="admin-nav-icon" id="iconBackend"></span>
+        Backend / API
+      </button>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <a href="../index.html" class="admin-view-site" target="_blank">← View Site</a>
+      <button class="admin-logout" onclick="adminLogout()">Log Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <h2 class="admin-page-title" id="adminPageTitle">Scraper Config</h2>
+      <div class="admin-topbar-right">
+        <div id="saveStatus" class="save-status"></div>
+        <button class="admin-save-btn" onclick="saveAllSettings()" id="saveBtn">
+          <span id="saveBtnText">Save Changes</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Scraper Config Tab ─────────────────────────────────── -->
+    <div class="admin-tab active" id="tab-scraper">
+      <div class="admin-card">
+        <div class="admin-card-head">
+          <h3 class="admin-card-title">RSS News Sources</h3>
+          <button class="admin-add-btn" onclick="addRssSource()">+ Add Source</button>
+        </div>
+        <p class="admin-card-desc">Configure the RSS feeds that GhanaFront scrapes for news. Active sources are polled every 5 minutes.</p>
+        <div id="rssList" class="rss-list"></div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">Scraper Settings</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Scrape Interval (minutes)</label>
+            <input type="number" class="form-input" id="scrapeInterval" value="5" min="1" max="60">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Articles per Source</label>
+            <input type="number" class="form-input" id="maxArticles" value="20" min="5" max="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Article Retention (days)</label>
+            <input type="number" class="form-input" id="retention" value="30" min="1" max="365">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Category for Unknown</label>
+            <select class="form-input" id="defaultCategory">
+              <option value="general" selected>General</option>
+              <option value="politics">Politics</option>
+              <option value="business">Business</option>
+              <option value="world">World</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Ticker Tab ─────────────────────────────────────────── -->
+    <div class="admin-tab" id="tab-ticker">
+      <div class="admin-card">
+        <h3 class="admin-card-title">Ticker Settings</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Ticker Label</label>
+            <input type="text" class="form-input" id="tickerLabel" placeholder="Breaking">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Scroll Speed (seconds — lower = faster)</label>
+            <input type="number" class="form-input" id="tickerSpeed" min="5" max="120" step="1">
+            <span class="form-hint">Range: 5 (very fast) to 120 (slow). Default: 18</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Ticker Source</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="tickerSource" value="breaking" id="tickerSrcBreaking" checked> Use Breaking News list (below)</label>
+            <label class="radio-label"><input type="radio" name="tickerSource" value="live"> Use Live API articles</label>
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <div class="admin-card-head">
+          <h3 class="admin-card-title">Ticker Preview</h3>
+        </div>
+        <div id="tickerPreview" class="ticker-preview-wrap"></div>
+      </div>
+    </div>
+
+    <!-- ── Breaking News Tab ──────────────────────────────────── -->
+    <div class="admin-tab" id="tab-breaking">
+      <div class="admin-card">
+        <div class="admin-card-head">
+          <h3 class="admin-card-title">Breaking News Headlines</h3>
+          <button class="admin-add-btn" onclick="addBreakingItem()">+ Add Headline</button>
+        </div>
+        <p class="admin-card-desc">These headlines scroll in the ticker bar. Drag to reorder (drag handle).</p>
+        <div id="breakingList" class="sortable-list"></div>
+      </div>
+    </div>
+
+    <!-- ── Trending News Tab ──────────────────────────────────── -->
+    <div class="admin-tab" id="tab-trending">
+      <div class="admin-card">
+        <div class="admin-card-head">
+          <h3 class="admin-card-title">Trending News Items</h3>
+          <button class="admin-add-btn" onclick="addTrendingItem()">+ Add Item</button>
+        </div>
+        <p class="admin-card-desc">These appear in the "Trending Now" sidebar widget. Drag to reorder.</p>
+        <div id="trendingList" class="sortable-list"></div>
+      </div>
+    </div>
+
+    <!-- ── Appearance Tab ─────────────────────────────────────── -->
+    <div class="admin-tab" id="tab-appearance">
+      <div class="admin-card">
+        <h3 class="admin-card-title">Branding</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Site Name</label>
+            <input type="text" class="form-input" id="siteName" placeholder="GhanaFront">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Site Tagline / Meta Description</label>
+            <input type="text" class="form-input" id="siteTagline" placeholder="Ghana News Today | Breaking News Accra">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Logo URL <span class="form-opt">leave blank for letter mark</span></label>
+            <input type="url" class="form-input" id="logoUrl" placeholder="https://…/logo.png">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Favicon URL <span class="form-opt">leave blank for default</span></label>
+            <input type="url" class="form-input" id="faviconUrl" placeholder="https://…/favicon.ico">
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">Colors</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Primary / Accent Color</label>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input type="color" id="primaryColor" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer">
+              <input type="text" class="form-input" id="primaryColorHex" placeholder="#ce1126" style="flex:1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link / Hover Accent Color</label>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input type="color" id="accentColor" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer">
+              <input type="text" class="form-input" id="accentColorHex" placeholder="#d4993a" style="flex:1">
+            </div>
+          </div>
+        </div>
+        <div class="color-preview" id="colorPreview">
+          <div class="color-swatch" id="swatch1"></div>
+          <div class="color-swatch" id="swatch2"></div>
+          <span style="font-size:12px;color:var(--muted)">Color preview</span>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">Search Bar</h3>
+        <div class="form-group">
+          <label class="form-label">Search Placeholder Text</label>
+          <input type="text" class="form-input" id="searchPlaceholder" placeholder="Search Ghana news…">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Popup Settings Tab ─────────────────────────────────── -->
+    <div class="admin-tab" id="tab-popups">
+      <div class="admin-card">
+        <h3 class="admin-card-title">Subscribe Newsletter Popup</h3>
+        <div class="toggle-row">
+          <span class="toggle-label">Enable subscribe popup</span>
+          <label class="toggle">
+            <input type="checkbox" id="showSubscribePopup">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">Auto-show delay after page load (milliseconds)</label>
+          <input type="number" class="form-input" id="subscribeDelay" min="0" max="60000" step="500" placeholder="6000">
+          <span class="form-hint">0 = show immediately. 6000 = show after 6 seconds.</span>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">Advertise With Us Popup</h3>
+        <div class="toggle-row">
+          <span class="toggle-label">Show advertise button in header</span>
+          <label class="toggle">
+            <input type="checkbox" id="showAdvertisePopup">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Menu Navigation Tab ───────────────────────────────── -->
+    <div class="admin-tab" id="tab-menus">
+      <div class="admin-card">
+        <div class="admin-card-head">
+          <h3 class="admin-card-title">Header Navigation Links</h3>
+          <button class="admin-add-btn" onclick="addMenuItem()">+ Add Link</button>
+        </div>
+        <p class="admin-card-desc">Drag to reorder. Each label must exactly match a page in the /pages/ directory (or use "Feed" for the homepage).</p>
+        <div id="menuList" class="sortable-list"></div>
+      </div>
+    </div>
+
+    <!-- ── General Settings Tab ──────────────────────────────── -->
+    <div class="admin-tab" id="tab-general">
+      <div class="admin-card">
+        <h3 class="admin-card-title">Site Settings</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Site URL</label>
+            <input type="url" class="form-input" id="siteUrl" placeholder="https://ghanafront.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Admin Email</label>
+            <input type="email" class="form-input" id="adminEmail" placeholder="admin@ghanafront.com">
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">Admin Password</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Current Password</label>
+            <input type="password" class="form-input" id="currentPassword" placeholder="Enter current password">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input type="password" class="form-input" id="newPassword" placeholder="Min. 8 characters">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm New Password</label>
+            <input type="password" class="form-input" id="confirmPassword" placeholder="Repeat new password">
+          </div>
+        </div>
+        <button class="admin-save-btn" onclick="changePassword()" style="margin-top:8px">Update Password</button>
+        <div id="pwMsg" class="form-hint" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- ── Backend / API Tab ─────────────────────────────────── -->
+    <div class="admin-tab" id="tab-backend">
+      <div class="admin-card">
+        <h3 class="admin-card-title">Database Connection</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">DB Host</label>
+            <input type="text" class="form-input" id="dbHost" placeholder="localhost">
+          </div>
+          <div class="form-group">
+            <label class="form-label">DB Port</label>
+            <input type="number" class="form-input" id="dbPort" placeholder="5432">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Database Name</label>
+            <input type="text" class="form-input" id="dbName" placeholder="ghanafront">
+          </div>
+          <div class="form-group">
+            <label class="form-label">DB User</label>
+            <input type="text" class="form-input" id="dbUser" placeholder="admin">
+          </div>
+          <div class="form-group">
+            <label class="form-label">DB Password</label>
+            <input type="password" class="form-input" id="dbPassword" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label">DB Type</label>
+            <select class="form-input" id="dbType">
+              <option value="postgres" selected>PostgreSQL</option>
+              <option value="mysql">MySQL</option>
+              <option value="sqlite">SQLite</option>
+            </select>
+          </div>
+        </div>
+        <div class="db-actions">
+          <button class="admin-save-btn" onclick="testDbConnection()">
+            <span id="dbTestText">Test Connection</span>
+          </button>
+          <div id="dbTestResult" class="db-result"></div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">API Configuration</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Backend API Base URL</label>
+            <input type="url" class="form-input" id="apiBase" placeholder="https://api.ghanafront.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">API Key / Secret <span class="form-opt">for internal requests</span></label>
+            <input type="password" class="form-input" id="apiKey" placeholder="sk-••••••••••••">
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">System Status</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <div class="status-dot status-green"></div>
+            <span>Frontend</span>
+            <span class="status-val">Running</span>
+          </div>
+          <div class="status-item">
+            <div class="status-dot" id="dbStatusDot" style="background:var(--subtle)"></div>
+            <span>Database</span>
+            <span class="status-val" id="dbStatusVal">Unknown</span>
+          </div>
+          <div class="status-item">
+            <div class="status-dot" id="scraperStatusDot" style="background:var(--subtle)"></div>
+            <span>Scraper</span>
+            <span class="status-val" id="scraperStatusVal">Unknown</span>
+          </div>
+          <div class="status-item">
+            <div class="status-dot status-green"></div>
+            <span>RSS Config</span>
+            <span class="status-val">Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+/* ── Admin auth ────────────────────────────────────────────────── */
+const ADMIN_DEFAULT_EMAIL = 'admin@ghanafront.com';
+const ADMIN_DEFAULT_PASS  = 'admin123';
+
+function getAdminCreds() {
+  try {
+    const c = localStorage.getItem('gf_admin_creds');
+    return c ? JSON.parse(c) : { email: ADMIN_DEFAULT_EMAIL, password: ADMIN_DEFAULT_PASS };
+  } catch { return { email: ADMIN_DEFAULT_EMAIL, password: ADMIN_DEFAULT_PASS }; }
+}
+
+function adminLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  const creds = getAdminCreds();
+  if (email === creds.email && pass === creds.password) {
+    sessionStorage.setItem('gf_admin_auth', '1');
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'flex';
+    initAdmin();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function adminLogout() {
+  sessionStorage.removeItem('gf_admin_auth');
+  location.reload();
+}
+
+function changePassword() {
+  const current = document.getElementById('currentPassword').value;
+  const newPw   = document.getElementById('newPassword').value;
+  const confirm = document.getElementById('confirmPassword').value;
+  const msg     = document.getElementById('pwMsg');
+  const creds   = getAdminCreds();
+  if (current !== creds.password) { msg.textContent = '✗ Current password is incorrect'; msg.style.color = '#ef4444'; return; }
+  if (newPw.length < 8) { msg.textContent = '✗ New password must be at least 8 characters'; msg.style.color = '#ef4444'; return; }
+  if (newPw !== confirm) { msg.textContent = '✗ Passwords do not match'; msg.style.color = '#ef4444'; return; }
+  localStorage.setItem('gf_admin_creds', JSON.stringify({ email: creds.email, password: newPw }));
+  msg.textContent = '✓ Password updated successfully'; msg.style.color = '#22c55e';
+  document.getElementById('currentPassword').value = '';
+  document.getElementById('newPassword').value = '';
+  document.getElementById('confirmPassword').value = '';
+}
+
+/* ── Tab switching ─────────────────────────────────────────────── */
+const TAB_TITLES = {
+  scraper: 'Scraper Config', ticker: 'Ticker Settings', breaking: 'Breaking News',
+  trending: 'Trending News', appearance: 'Appearance & Branding', popups: 'Popup Settings',
+  menus: 'Menu Navigation', general: 'General Settings', backend: 'Backend / API',
+};
+function switchTab(id, btn) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id)?.classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('adminPageTitle').textContent = TAB_TITLES[id] || id;
+}
+
+/* ── Init admin ────────────────────────────────────────────────── */
+function initAdmin() {
+  applyDark();
+  injectAdminIcons();
+  loadFormValues();
+  renderRssList();
+  renderBreakingList();
+  renderTrendingList();
+  renderMenuList();
+  renderTickerPreview();
+}
+
+function injectAdminIcons() {
+  document.getElementById('iconRss').innerHTML        = ICONS.rss;
+  document.getElementById('iconTicker').innerHTML     = ICONS.megaphone;
+  document.getElementById('iconBreaking').innerHTML   = ICONS.trending;
+  document.getElementById('iconTrending').innerHTML   = ICONS.trending;
+  document.getElementById('iconAppearance').innerHTML = ICONS.palette;
+  document.getElementById('iconPopups').innerHTML     = ICONS.popup;
+  document.getElementById('iconMenus').innerHTML      = ICONS.nav;
+  document.getElementById('iconGeneral').innerHTML    = ICONS.gear;
+  document.getElementById('iconBackend').innerHTML    = ICONS.database;
+}
+
+/* ── Load / Save ───────────────────────────────────────────────── */
+function loadFormValues() {
+  const cfg = getSiteConfig();
+  document.getElementById('adminSiteName').textContent = cfg.siteName || 'GhanaFront';
+  // Appearance
+  document.getElementById('siteName').value          = cfg.siteName || '';
+  document.getElementById('siteTagline').value       = cfg.siteTagline || '';
+  document.getElementById('logoUrl').value           = cfg.logoUrl || '';
+  document.getElementById('faviconUrl').value        = cfg.faviconUrl || '';
+  document.getElementById('primaryColor').value      = cfg.primaryColor || '#ce1126';
+  document.getElementById('primaryColorHex').value   = cfg.primaryColor || '#ce1126';
+  document.getElementById('accentColor').value       = cfg.accentColor || '#d4993a';
+  document.getElementById('accentColorHex').value    = cfg.accentColor || '#d4993a';
+  document.getElementById('searchPlaceholder').value = cfg.searchPlaceholder || '';
+  updateColorPreview();
+  // Ticker
+  document.getElementById('tickerLabel').value       = cfg.tickerLabel || 'Breaking';
+  document.getElementById('tickerSpeed').value       = cfg.tickerSpeed || 18;
+  // Scraper
+  document.getElementById('scrapeInterval').value    = cfg.scrapeInterval || 5;
+  document.getElementById('maxArticles').value       = cfg.maxArticles || 20;
+  document.getElementById('retention').value         = cfg.retention || 30;
+  // Popups
+  document.getElementById('showSubscribePopup').checked  = cfg.showSubscribePopup !== false;
+  document.getElementById('showAdvertisePopup').checked  = cfg.showAdvertisePopup !== false;
+  document.getElementById('subscribeDelay').value         = cfg.subscribeDelay || 6000;
+  // General
+  document.getElementById('siteUrl').value           = cfg.siteUrl || '';
+  document.getElementById('adminEmail').value        = cfg.adminEmail || '';
+  // Backend
+  document.getElementById('dbHost').value            = cfg.dbHost || 'localhost';
+  document.getElementById('dbPort').value            = cfg.dbPort || '5432';
+  document.getElementById('dbName').value            = cfg.dbName || 'ghanafront';
+  document.getElementById('dbUser').value            = cfg.dbUser || 'admin';
+  document.getElementById('apiBase').value           = cfg.apiBase || '';
+  // Color pickers sync
+  document.getElementById('primaryColor').addEventListener('input', e => {
+    document.getElementById('primaryColorHex').value = e.target.value;
+    updateColorPreview();
+  });
+  document.getElementById('accentColor').addEventListener('input', e => {
+    document.getElementById('accentColorHex').value = e.target.value;
+    updateColorPreview();
+  });
+  document.getElementById('primaryColorHex').addEventListener('input', e => {
+    if (/^#[0-9a-f]{6}$/i.test(e.target.value)) {
+      document.getElementById('primaryColor').value = e.target.value;
+      updateColorPreview();
+    }
+  });
+  document.getElementById('accentColorHex').addEventListener('input', e => {
+    if (/^#[0-9a-f]{6}$/i.test(e.target.value)) {
+      document.getElementById('accentColor').value = e.target.value;
+      updateColorPreview();
+    }
+  });
+  // Ticker speed preview on change
+  document.getElementById('tickerSpeed').addEventListener('input', renderTickerPreview);
+  document.getElementById('tickerLabel').addEventListener('input', renderTickerPreview);
+}
+
+function updateColorPreview() {
+  const c1 = document.getElementById('primaryColor').value;
+  const c2 = document.getElementById('accentColor').value;
+  document.getElementById('swatch1').style.background = c1;
+  document.getElementById('swatch2').style.background = c2;
+}
+
+function collectFormValues() {
+  const cfg = getSiteConfig();
+  // Appearance
+  cfg.siteName          = document.getElementById('siteName').value.trim() || 'GhanaFront';
+  cfg.siteTagline       = document.getElementById('siteTagline').value.trim();
+  cfg.logoUrl           = document.getElementById('logoUrl').value.trim();
+  cfg.faviconUrl        = document.getElementById('faviconUrl').value.trim();
+  cfg.primaryColor      = document.getElementById('primaryColorHex').value.trim() || '#ce1126';
+  cfg.accentColor       = document.getElementById('accentColorHex').value.trim() || '#d4993a';
+  cfg.searchPlaceholder = document.getElementById('searchPlaceholder').value.trim();
+  // Ticker
+  cfg.tickerLabel       = document.getElementById('tickerLabel').value.trim() || 'Breaking';
+  cfg.tickerSpeed       = parseInt(document.getElementById('tickerSpeed').value) || 18;
+  // Scraper
+  cfg.scrapeInterval    = parseInt(document.getElementById('scrapeInterval').value) || 5;
+  cfg.maxArticles       = parseInt(document.getElementById('maxArticles').value) || 20;
+  cfg.retention         = parseInt(document.getElementById('retention').value) || 30;
+  cfg.defaultCategory   = document.getElementById('defaultCategory').value;
+  // Popups
+  cfg.showSubscribePopup = document.getElementById('showSubscribePopup').checked;
+  cfg.showAdvertisePopup = document.getElementById('showAdvertisePopup').checked;
+  cfg.subscribeDelay     = parseInt(document.getElementById('subscribeDelay').value) || 6000;
+  // General
+  cfg.siteUrl   = document.getElementById('siteUrl').value.trim();
+  cfg.adminEmail = document.getElementById('adminEmail').value.trim();
+  // Backend
+  cfg.dbHost   = document.getElementById('dbHost').value.trim();
+  cfg.dbPort   = document.getElementById('dbPort').value.trim();
+  cfg.dbName   = document.getElementById('dbName').value.trim();
+  cfg.dbUser   = document.getElementById('dbUser').value.trim();
+  cfg.apiBase  = document.getElementById('apiBase').value.trim();
+  // Lists from DOM
+  cfg.rssSources   = collectRssList();
+  cfg.breakingNews = collectTextList('breakingList');
+  cfg.trendingNews = collectTextList('trendingList');
+  cfg.menuLinks    = collectTextList('menuList');
+  return cfg;
+}
+
+function saveAllSettings() {
+  const btn = document.getElementById('saveBtn');
+  const txt = document.getElementById('saveBtnText');
+  const status = document.getElementById('saveStatus');
+  txt.textContent = 'Saving…';
+  btn.disabled = true;
+  setTimeout(() => {
+    const cfg = collectFormValues();
+    saveSiteConfig(cfg);
+    document.getElementById('adminSiteName').textContent = cfg.siteName;
+    renderTickerPreview();
+    txt.textContent = 'Save Changes';
+    btn.disabled = false;
+    status.textContent = '✓ Saved';
+    status.className = 'save-status saved';
+    setTimeout(() => { status.textContent = ''; status.className = 'save-status'; }, 3000);
+  }, 600);
+}
+
+/* ── RSS List ──────────────────────────────────────────────────── */
+function renderRssList() {
+  const cfg = getSiteConfig();
+  const sources = cfg.rssSources || [];
+  document.getElementById('rssList').innerHTML = sources.map((s, i) => `
+    <div class="rss-item" data-idx="${i}">
+      <label class="toggle" style="flex-shrink:0">
+        <input type="checkbox" ${s.active ? 'checked' : ''} onchange="toggleRss(${i})">
+        <span class="toggle-slider"></span>
+      </label>
+      <input class="form-input rss-name-input" value="${s.name}" placeholder="Source Name" onchange="updateRss(${i},'name',this.value)">
+      <input class="form-input rss-url-input" value="${s.url}" placeholder="https://example.com/feed" onchange="updateRss(${i},'url',this.value)">
+      <button class="rss-remove" onclick="removeRss(${i})" title="Remove">${ICONS.trash}</button>
+    </div>`).join('');
+}
+
+let _rssSources = null;
+function getRssSources() {
+  if (_rssSources === null) _rssSources = [...(getSiteConfig().rssSources || [])];
+  return _rssSources;
+}
+function addRssSource() {
+  const sources = getRssSources();
+  sources.push({ name: 'New Source', url: '', active: true });
+  _rssSources = sources;
+  renderRssFromMemory();
+}
+function removeRss(i) {
+  const s = getRssSources(); s.splice(i, 1); renderRssFromMemory();
+}
+function toggleRss(i) {
+  const s = getRssSources(); s[i].active = !s[i].active;
+}
+function updateRss(i, field, val) {
+  const s = getRssSources(); s[i][field] = val;
+}
+function renderRssFromMemory() {
+  const sources = getRssSources();
+  document.getElementById('rssList').innerHTML = sources.map((s, i) => `
+    <div class="rss-item" data-idx="${i}">
+      <label class="toggle" style="flex-shrink:0">
+        <input type="checkbox" ${s.active ? 'checked' : ''} onchange="toggleRss(${i})">
+        <span class="toggle-slider"></span>
+      </label>
+      <input class="form-input rss-name-input" value="${s.name}" placeholder="Source Name" onchange="updateRss(${i},'name',this.value)">
+      <input class="form-input rss-url-input" value="${s.url}" placeholder="https://example.com/feed" onchange="updateRss(${i},'url',this.value)">
+      <button class="rss-remove" onclick="removeRss(${i})" title="Remove">${ICONS.trash}</button>
+    </div>`).join('');
+}
+function collectRssList() {
+  if (_rssSources !== null) return _rssSources;
+  return (getSiteConfig().rssSources || []);
+}
+
+/* ── Generic sortable text lists ──────────────────────────────── */
+function renderTextList(containerId, items, addFn) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map((item, i) => `
+    <div class="sortable-item" data-idx="${i}">
+      <span class="drag-handle">⠿</span>
+      <input class="form-input" value="${item}" placeholder="Enter text…" onchange="updateListItem('${containerId}',${i},this.value)">
+      <button class="rss-remove" onclick="removeListItem('${containerId}',${i})" title="Remove">${ICONS.trash}</button>
+    </div>`).join('');
+}
+
+const _listData = {};
+function getListData(id) {
+  if (!_listData[id]) {
+    const cfg = getSiteConfig();
+    if (id === 'breakingList') _listData[id] = [...(cfg.breakingNews || [])];
+    else if (id === 'trendingList') _listData[id] = [...(cfg.trendingNews || [])];
+    else if (id === 'menuList') _listData[id] = [...(cfg.menuLinks || [])];
+  }
+  return _listData[id];
+}
+function renderBreakingList()  { renderTextList('breakingList', getListData('breakingList')); }
+function renderTrendingList()  { renderTextList('trendingList', getListData('trendingList')); }
+function renderMenuList()      { renderTextList('menuList', getListData('menuList')); }
+
+function addBreakingItem() { getListData('breakingList').push('New headline'); renderBreakingList(); }
+function addTrendingItem() { getListData('trendingList').push('New trending story'); renderTrendingList(); }
+function addMenuItem()     { getListData('menuList').push('PageName'); renderMenuList(); }
+
+function updateListItem(id, i, val) { getListData(id)[i] = val; }
+function removeListItem(id, i) {
+  getListData(id).splice(i, 1);
+  if (id === 'breakingList') renderBreakingList();
+  else if (id === 'trendingList') renderTrendingList();
+  else if (id === 'menuList') renderMenuList();
+}
+function collectTextList(id) {
+  if (_listData[id]) return _listData[id];
+  const items = [];
+  document.querySelectorAll(`#${id} .sortable-item input`).forEach(inp => items.push(inp.value));
+  return items;
+}
+
+/* ── Ticker preview ────────────────────────────────────────────── */
+function renderTickerPreview() {
+  const label = document.getElementById('tickerLabel')?.value || 'Breaking';
+  const speed = document.getElementById('tickerSpeed')?.value || 18;
+  const items = getListData('breakingList');
+  const doubled = [...items, ...items];
+  document.getElementById('tickerPreview').innerHTML = `
+    <div class="ticker">
+      <div class="ticker-tag"><div class="ticker-blink"></div>${label}</div>
+      <div class="ticker-track">
+        <div class="ticker-reel" style="animation-duration:${speed}s">
+          ${doubled.map(t => `<a class="ticker-item" href="#"><div class="ticker-sep"></div>${t}</a>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ── DB test ───────────────────────────────────────────────────── */
+async function testDbConnection() {
+  const btn = document.getElementById('dbTestText');
+  const result = document.getElementById('dbTestResult');
+  const dot = document.getElementById('dbStatusDot');
+  const val = document.getElementById('dbStatusVal');
+  btn.textContent = 'Testing…';
+  result.textContent = '';
+  result.className = 'db-result';
+  await new Promise(r => setTimeout(r, 1200));
+  // Simulate — in prod this would hit /api/db/test
+  btn.textContent = 'Test Connection';
+  result.textContent = '✗ Could not connect (no backend running in demo mode)';
+  result.className = 'db-result db-error';
+  dot.style.background = '#ef4444';
+  val.textContent = 'Offline';
+}
+
+/* ── Boot ──────────────────────────────────────────────────────── */
+if (sessionStorage.getItem('gf_admin_auth') === '1') {
+  document.getElementById('loginGate').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'flex';
+  document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+  document.addEventListener('DOMContentLoaded', applyDark);
+}
+</script>
+</body>
+</html>

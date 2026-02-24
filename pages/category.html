@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Category | GhanaFront</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div id="headerRoot"></div>
+<div id="tickerRoot"></div>
+
+<div class="page">
+  <div id="sidebarRoot"></div>
+  <main>
+    <div id="categoryHead" class="section-head" style="margin-bottom:20px"></div>
+    <div id="heroSlot" style="margin-bottom:24px"></div>
+    <div class="article-grid" id="articleGrid"></div>
+    <div class="load-row">
+      <button class="load-btn" id="loadBtn" onclick="loadMore()">
+        <span id="loadIcon"></span>
+        <span id="loadText">Load more</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </div>
+  </main>
+  <div id="trendingRoot"></div>
+</div>
+
+<div id="chatRoot"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  // Read category from URL param or filename
+  const params  = new URLSearchParams(location.search);
+  const CAT     = params.get('cat') || location.pathname.split('/').pop().replace('.html','');
+  const CAT_LABEL = CAT.charAt(0).toUpperCase() + CAT.slice(1);
+
+  let page = 1;
+  let articles = [];
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    document.title = `${CAT_LABEL} — GhanaFront`;
+    document.getElementById('headerRoot').innerHTML   = buildHeader(CAT_LABEL);
+    document.getElementById('tickerRoot').innerHTML   = buildTicker(MOCK_TRENDING.slice(0,5));
+    document.getElementById('trendingRoot').innerHTML = buildTrendingSidebar(MOCK_TRENDING);
+    document.getElementById('chatRoot').innerHTML     = buildChatbot();
+    document.getElementById('sidebarRoot').innerHTML  = buildSidebar(CAT, 'ghana');
+
+    document.getElementById('categoryHead').innerHTML = `
+      <div class="section-label2">
+        <div class="section-rule"></div>
+        ${CAT_LABEL} News
+      </div>`;
+
+    applyDark();
+    initSearch();
+    initChat();
+    await loadArticles(true);
+  });
+
+  async function loadArticles(reset = false) {
+    if (reset) { page = 1; articles = []; }
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('loadBtn').disabled = true;
+
+    const data = await apiFetch(`/api/articles?category=${CAT}&page=${page}&limit=9`);
+    const fetched = data?.articles || MOCK_ARTICLES.filter(a => a.category === CAT || CAT === 'all');
+
+    articles = reset ? fetched : [...articles, ...fetched];
+
+    if (articles.length > 0) {
+      document.getElementById('heroSlot').innerHTML = buildHero(articles[0]);
+      document.getElementById('articleGrid').innerHTML = articles.slice(1).map((a,i)=>buildCard(a,i)).join('');
+    }
+
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('loadBtn').disabled = false;
+
+    if (fetched.length < 9) {
+      document.getElementById('loadText').textContent = 'All caught up';
+      document.getElementById('loadIcon').innerHTML = ICONS.check;
+      document.getElementById('loadBtn').onclick = null;
+      document.getElementById('loadBtn').style.color = 'var(--subtle)';
+    }
+    page++;
+  }
+
+  function loadMore() { loadArticles(false); }
+
+  function filterCategory(cat, btn) {
+    location.href = `${cat}.html`;
+  }
+
+  function filterRegion(reg, btn) {
+    document.querySelectorAll('.region-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    loadArticles(true);
+  }
+</script>
+</body>
+</html>

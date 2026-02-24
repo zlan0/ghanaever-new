@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhanaFront — Ghana News Today | Accra Breaking News</title>
+  <meta name="description" content="Ghana's fastest news aggregator. Breaking news from Accra, politics, business, sports and tech — updated every 5 minutes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "GhanaFront",
+    "url": "https://ghanafront.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://ghanafront.com/?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+</head>
+<body>
+
+<div id="headerRoot"></div>
+<div id="tickerRoot"></div>
+
+<div class="page">
+  <div id="sidebarRoot"></div>
+
+  <main id="mainFeed">
+
+    <!-- Section header -->
+    <div class="section-head">
+      <div class="section-label2">
+        <div class="section-rule"></div>
+        Top Stories
+      </div>
+      <div class="chip-row">
+        <button class="chip active" onclick="setSort('trending',this)">Trending</button>
+        <button class="chip" onclick="setSort('recent',this)">Latest</button>
+        <button class="chip" onclick="setSort('views',this)">Most Read</button>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div id="heroSlot"></div>
+
+    <!-- Grid heading -->
+    <div class="section-head" style="margin-bottom:14px">
+      <div class="section-label2">
+        <div class="section-rule"></div>
+        Latest Headlines
+      </div>
+    </div>
+
+    <!-- Article grid -->
+    <div class="article-grid" id="articleGrid"></div>
+
+    <!-- Load more -->
+    <div class="load-row">
+      <button class="load-btn" id="loadBtn" onclick="loadMore()">
+        <span id="loadIcon"></span>
+        <span id="loadText">Load more stories</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </div>
+
+  </main>
+
+  <div id="trendingRoot"></div>
+</div>
+
+<!-- Chatbot + FAB injected here -->
+<div id="chatRoot"></div>
+
+<script src="js/app.js"></script>
+<script>
+  /* ── State ─────────────────────────────────────────────────────── */
+  let currentCategory = 'all';
+  let currentRegion   = 'ghana';
+  let currentSort     = 'trending';
+  let currentPage     = 1;
+  let allArticles     = [];
+  let displayedCount  = 0;
+  const PAGE_SIZE     = 7;
+
+  /* ── Boot ──────────────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', async () => {
+
+    // Inject header, ticker, sidebar, trending, chat
+    document.getElementById('headerRoot').innerHTML   = buildHeader('Feed');
+    // Fix paths for root index.html (not in pages/ subdir)
+    document.querySelectorAll('.logo,.nav-link,.mobile-nav-link').forEach(a => {
+      const href = a.getAttribute('href');
+      if (href && href.startsWith('../')) a.href = href.replace('../', '');
+    });
+    document.getElementById('trendingRoot').innerHTML = buildTrendingSidebar(MOCK_TRENDING);
+    document.getElementById('chatRoot').innerHTML     = buildChatbot();
+    renderSidebar();
+    renderTicker();
+
+    applyDark();
+    initSearch();
+    initChat();
+
+    await fetchArticles(true);
+  });
+
+  /* ── Render helpers ────────────────────────────────────────────── */
+  function renderSidebar() {
+    document.getElementById('sidebarRoot').innerHTML =
+      buildSidebar(currentCategory, currentRegion);
+  }
+
+  function renderTicker() {
+    document.getElementById('tickerRoot').innerHTML = buildTicker(MOCK_TRENDING.slice(0,5));
+  }
+
+  /* ── Data fetch ────────────────────────────────────────────────── */
+  async function fetchArticles(reset = false) {
+    if (reset) { currentPage = 1; displayedCount = 0; }
+
+    setLoadingState(true);
+
+    // Try API first, fall back to mock
+    const data = await apiFetch(
+      `/api/articles?category=${currentCategory}&region=${currentRegion}&sort=${currentSort}&page=${currentPage}&limit=${PAGE_SIZE}`
+    );
+
+    let articles = data?.articles || null;
+
+    if (!articles) {
+      // Filter mock data
+      articles = MOCK_ARTICLES.filter(a => {
+        const catMatch = currentCategory === 'all' || a.category === currentCategory;
+        return catMatch;
+      });
+    }
+
+    if (reset) { allArticles = articles; }
+    else        { allArticles = [...allArticles, ...articles]; }
+
+    renderFeed(reset);
+    setLoadingState(false);
+    currentPage++;
+  }
+
+  function renderFeed(reset) {
+    const heroSlot = document.getElementById('heroSlot');
+    const grid     = document.getElementById('articleGrid');
+
+    if (allArticles.length === 0) {
+      heroSlot.innerHTML = '';
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">No articles found</div>`;
+      return;
+    }
+
+    // Hero = first article
+    heroSlot.innerHTML = buildHero(allArticles[0]);
+
+    // Grid = rest
+    const gridArticles = allArticles.slice(1);
+    if (reset) {
+      grid.innerHTML = gridArticles.map((a,i) => buildCard(a,i)).join('');
+    } else {
+      const prevCount = displayedCount - 1;
+      grid.innerHTML += gridArticles.slice(prevCount).map((a,i) => buildCard(a, prevCount+i)).join('');
+    }
+
+    displayedCount = allArticles.length;
+    updateLoadBtn();
+  }
+
+  function updateLoadBtn() {
+    const btn    = document.getElementById('loadBtn');
+    const icon   = document.getElementById('loadIcon');
+    const text   = document.getElementById('loadText');
+    const hasMore = allArticles.length >= currentPage * PAGE_SIZE;
+    if (!hasMore) {
+      icon.innerHTML = ICONS.check;
+      text.textContent = 'All caught up';
+      btn.style.color = 'var(--subtle)';
+      btn.onclick = null;
+    } else {
+      icon.innerHTML = ICONS.down;
+      text.textContent = 'Load more stories';
+      btn.style.color = '';
+    }
+  }
+
+  function setLoadingState(loading) {
+    document.getElementById('spinner').style.display = loading ? 'block' : 'none';
+    document.getElementById('loadBtn').disabled = loading;
+  }
+
+  /* ── Filters ───────────────────────────────────────────────────── */
+  function filterCategory(cat, btn) {
+    currentCategory = cat;
+    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    fetchArticles(true);
+  }
+
+  function filterRegion(reg, btn) {
+    currentRegion = reg;
+    document.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    fetchArticles(true);
+  }
+
+  function setSort(sort, btn) {
+    currentSort = sort;
+    document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    fetchArticles(true);
+  }
+
+  function loadMore() {
+    fetchArticles(false);
+  }
+
+  /* ── Infinite scroll ───────────────────────────────────────────── */
+  const loadObserver = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      const hasMore = allArticles.length >= currentPage * PAGE_SIZE;
+      if (hasMore) fetchArticles(false);
+    }
+  }, { threshold: 0.5 });
+
+  window.addEventListener('load', () => {
+    const btn = document.getElementById('loadBtn');
+    if (btn) loadObserver.observe(btn);
+  });
+</script>
+</body>
+</html>

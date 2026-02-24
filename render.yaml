@@ -1,0 +1,27 @@
+# render.yaml — Deploy backend + scraper to Render (free tier)
+# https://render.com
+
+services:
+  # FastAPI Backend
+  - type: web
+    name: ghana-news-api
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+
+  # RSS Scraper Bot (background worker)
+  - type: worker
+    name: ghana-news-scraper
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python backend/scrapers/rss_scraper.py
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health News | GhanaFront</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="headerRoot"></div><div id="tickerRoot"></div>
+<div class="page">
+  <div id="sidebarRoot"></div>
+  <main>
+    <div class="section-head" style="margin-bottom:20px">
+      <div class="section-label2"><div class="section-rule"></div>Health News</div>
+    </div>
+    <div id="heroSlot" style="margin-bottom:24px"></div>
+    <div class="article-grid" id="articleGrid"></div>
+    <div class="load-row">
+      <button class="load-btn" id="loadBtn">
+        <span id="loadIcon"></span><span id="loadText">Load more</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </div>
+  </main>
+  <div id="trendingRoot"></div>
+</div>
+<div id="chatRoot"></div>
+<script src="../js/app.js"></script>
+<script>
+  const CAT='health', LABEL='Health';
+  let page=1, articles=[];
+  document.addEventListener('DOMContentLoaded', async()=>{
+    document.getElementById('headerRoot').innerHTML=buildHeader(LABEL);
+    document.getElementById('tickerRoot').innerHTML=buildTicker(MOCK_TRENDING.slice(0,5));
+    document.getElementById('trendingRoot').innerHTML=buildTrendingSidebar(MOCK_TRENDING);
+    document.getElementById('chatRoot').innerHTML=buildChatbot();
+    document.getElementById('sidebarRoot').innerHTML=buildSidebar(CAT,'ghana');
+    applyDark();initSearch();initChat();
+    await load(true);
+  });
+  async function load(reset=false){
+    if(reset){page=1;articles=[];}
+    document.getElementById('spinner').style.display='block';
+    document.getElementById('loadBtn').disabled=true;
+    const data=await apiFetch('/api/articles?category='+CAT+'&page='+page+'&limit=9');
+    const fetched=data?.articles||MOCK_ARTICLES.filter(a=>a.category===CAT);
+    articles=reset?fetched:[...articles,...fetched];
+    if(articles.length>0){
+      document.getElementById('heroSlot').innerHTML=buildHero(articles[0]);
+      document.getElementById('articleGrid').innerHTML=articles.slice(1).map((a,i)=>buildCard(a,i)).join('');
+    } else {
+      document.getElementById('heroSlot').innerHTML='';
+      document.getElementById('articleGrid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">No '+LABEL+' articles yet.</div>';
+    }
+    document.getElementById('spinner').style.display='none';
+    document.getElementById('loadBtn').disabled=false;
+    if(fetched.length<9){document.getElementById('loadText').textContent='All caught up';document.getElementById('loadBtn').onclick=null;}
+    else{document.getElementById('loadBtn').onclick=()=>load(false);}
+    page++;
+  }
+  function filterCategory(cat,btn){location.href=cat+'.html';}
+  function filterRegion(r,btn){document.querySelectorAll('.region-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');load(true);}
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+"""
+Ghana News Aggregator - RSS Scraper Bot
+Polls RSS feeds every 5 minutes, dedupes, categorizes, and stores to Supabase.
+"""
+
+import hashlib
+import os
+import time
+import logging
+from datetime import datetime, timezone
+from typing import Optional
+import feedparser
+import requests
+from bs4 import BeautifulSoup
+from supabase import create_client, Client
+from transformers import pipeline
+import schedule
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
+
+# ─── Config ──────────────────────────────────────────────────────────────────
+
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+RSS_FEEDS = [
+    # Ghana
+    {"name": "CitiNews",      "url": "https://citinewsroom.com/feed/", "region": "ghana"},
+    {"name": "JoyOnline",     "url": "https://www.myjoyonline.com/feed/", "region": "ghana"},
+    {"name": "GhanaWeb",      "url": "https://www.ghanaweb.com/GhanaHomePage/rss/index.php", "region": "ghana"},
+    {"name": "Graphic Online","url": "https://www.graphic.com.gh/feed/rss", "region": "ghana"},
+    {"name": "GhanaBusinessNews", "url": "https://www.ghanabusinessnews.com/feed/", "region": "ghana"},
+    # African/Global
+    {"name": "BBC Africa",    "url": "http://feeds.bbci.co.uk/news/world/africa/rss.xml", "region": "africa"},
+    {"name": "Reuters Africa","url": "https://feeds.reuters.com/reuters/AFRICANews", "region": "africa"},
+    {"name": "Al Jazeera",    "url": "https://www.aljazeera.com/xml/rss/all.xml", "region": "global"},
+]
+
+CATEGORIES = {
+    "politics":  ["election", "parliament", "president", "government", "minister", "ndc", "npp", "vote"],
+    "business":  ["economy", "cedi", "ghana stock", "business", "investment", "gdp", "inflation", "bank"],
+    "sports":    ["black stars", "football", "soccer", "athletics", "olympics", "sports", "league", "goal"],
+    "tech":      ["technology", "mobile", "internet", "startup", "fintech", "app", "digital", "ai", "cyber"],
+    "health":    ["health", "hospital", "disease", "covid", "malaria", "clinic", "medicine", "who"],
+    "entertainment": ["music", "movie", "celebrity", "arts", "culture", "fashion", "award", "entertainment"],
+    "world":     ["international", "usa", "europe", "china", "uk", "global", "united nations", "war"],
+}
+
+# ─── Classifier ──────────────────────────────────────────────────────────────
+
+_zero_shot = None
+
+def get_classifier():
+    global _zero_shot
+    if _zero_shot is None:
+        log.info("Loading HuggingFace zero-shot classifier...")
+        _zero_shot = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+    return _zero_shot
+
+def categorize_article(title: str, summary: str) -> str:
+    text = f"{title} {summary}".lower()
+    # Fast keyword match first (avoids model call for obvious articles)
+    for category, keywords in CATEGORIES.items():
+        if any(kw in text for kw in keywords):
+            return category
+    # Fall back to model
+    try:
+        clf = get_classifier()
+        result = clf(text[:512], list(CATEGORIES.keys()))
+        return result["labels"][0]
+    except Exception as e:
+        log.warning(f"Classifier failed: {e}")
+        return "general"
+
+# ─── Trending Score ──────────────────────────────────────────────────────────
+
+def trending_score(views: int, shares: int, hours_old: float) -> float:
+    """Score = 0.6*views + 0.3*shares + 0.1*(1/hours_old)"""
+    recency = 1 / max(hours_old, 0.1)
+    return 0.6 * views + 0.3 * shares + 0.1 * recency
+
+# ─── Image Extraction ────────────────────────────────────────────────────────
+
+def extract_image(entry) -> Optional[str]:
+    # Try media:content
+    if hasattr(entry, "media_content") and entry.media_content:
+        return entry.media_content[0].get("url")
+    # Try enclosures
+    if hasattr(entry, "enclosures") and entry.enclosures:
+        for enc in entry.enclosures:
+            if "image" in enc.get("type", ""):
+                return enc.get("href") or enc.get("url")
+    # Try parsing summary HTML
+    if hasattr(entry, "summary"):
+        soup = BeautifulSoup(entry.summary, "html.parser")
+        img = soup.find("img")
+        if img and img.get("src"):
+            return img["src"]
+    return None
+
+# ─── Affiliate Link Insertion ─────────────────────────────────────────────────
+
+AFFILIATE_TRIGGERS = {
+    "iphone":   "https://amzn.to/ghana-iphone",    # replace with real affiliate IDs
+    "samsung":  "https://amzn.to/ghana-samsung",
+    "laptop":   "https://amzn.to/ghana-laptop",
+    "tickets":  "https://www.eventbrite.com/?aff=ghana_news",
+    "book":     "https://amzn.to/ghana-books",
+    "jumia":    "https://www.jumia.com.gh/?utm_source=ghananews&utm_medium=affiliate",
+}
+
+def insert_affiliates(content: str) -> dict:
+    """Returns {content_with_links, affiliate_map}"""
+    affiliate_map = {}
+    for trigger, url in AFFILIATE_TRIGGERS.items():
+        if trigger in content.lower():
+            affiliate_map[trigger] = url
+    return affiliate_map
+
+# ─── Deduplication ───────────────────────────────────────────────────────────
+
+def title_hash(title: str) -> str:
+    return hashlib.md5(title.strip().lower().encode()).hexdigest()
+
+def already_exists(thash: str) -> bool:
+    result = supabase.table("articles").select("id").eq("title_hash", thash).execute()
+    return len(result.data) > 0
+
+# ─── Core Scrape Loop ────────────────────────────────────────────────────────
+
+def scrape_all_feeds():
+    log.info("Starting RSS scrape cycle...")
+    new_count = 0
+
+    for feed_meta in RSS_FEEDS:
+        try:
+            feed = feedparser.parse(feed_meta["url"])
+            log.info(f"[{feed_meta['name']}] {len(feed.entries)} entries found")
+
+            for entry in feed.entries[:20]:  # max 20 per feed per cycle
+                title = entry.get("title", "").strip()
+                if not title:
+                    continue
+
+                thash = title_hash(title)
+                if already_exists(thash):
+                    continue
+
+                summary = BeautifulSoup(
+                    entry.get("summary", entry.get("description", "")), "html.parser"
+                ).get_text()[:500]
+
+                published_raw = entry.get("published_parsed") or entry.get("updated_parsed")
+                if published_raw:
+                    published_at = datetime(*published_raw[:6], tzinfo=timezone.utc).isoformat()
+                else:
+                    published_at = datetime.now(timezone.utc).isoformat()
+
+                image_url = extract_image(entry)
+                category = categorize_article(title, summary)
+                affiliate_map = insert_affiliates(f"{title} {summary}")
+
+                hours_old = max(
+                    (datetime.now(timezone.utc) - datetime.fromisoformat(published_at.replace("Z", "+00:00"))).total_seconds() / 3600,
+                    0.01
+                )
+
+                article = {
+                    "title":        title,
+                    "title_hash":   thash,
+                    "summary":      summary,
+                    "url":          entry.get("link", ""),
+                    "image_url":    image_url,
+                    "source":       feed_meta["name"],
+                    "region":       feed_meta["region"],
+                    "category":     category,
+                    "published_at": published_at,
+                    "views":        0,
+                    "shares":       0,
+                    "trending_score": trending_score(0, 0, hours_old),
+                    "affiliates":   affiliate_map,
+                    "seo_score":    0,
+                }
+
+                supabase.table("articles").insert(article).execute()
+                new_count += 1
+                log.info(f"  ✓ Inserted: {title[:60]}")
+
+        except Exception as e:
+            log.error(f"[{feed_meta['name']}] Error: {e}")
+
+    log.info(f"Cycle complete. {new_count} new articles inserted.")
+
+def update_trending_scores():
+    """Recalculate trending scores hourly."""
+    log.info("Updating trending scores...")
+    articles = supabase.table("articles").select("id,views,shares,published_at").execute().data
+    for art in articles:
+        try:
+            published = datetime.fromisoformat(art["published_at"].replace("Z", "+00:00"))
+            hours_old = max(
+                (datetime.now(timezone.utc) - published).total_seconds() / 3600, 0.01
+            )
+            score = trending_score(art["views"], art["shares"], hours_old)
+            supabase.table("articles").update({"trending_score": score}).eq("id", art["id"]).execute()
+        except Exception as e:
+            log.warning(f"Score update failed for {art['id']}: {e}")
+    log.info("Trending scores updated.")
+
+# ─── Scheduler ───────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    log.info("Ghana News Scraper Bot starting...")
+    scrape_all_feeds()  # run immediately on start
+
+    schedule.every(5).minutes.do(scrape_all_feeds)
+    schedule.every(1).hours.do(update_trending_scores)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(30)
