@@ -338,64 +338,38 @@
     <!-- ── Backend / API Tab ─────────────────────────────────── -->
     <div class="admin-tab" id="tab-backend">
       <div class="admin-card">
-        <h3 class="admin-card-title">Database Connection</h3>
+        <h3 class="admin-card-title">API Configuration</h3>
+        <p class="admin-card-desc">Your backend runs on Render and connects to Supabase. Set the API URL below to enable live status checks.</p>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">DB Host</label>
-            <input type="text" class="form-input" id="dbHost" placeholder="localhost">
-          </div>
-          <div class="form-group">
-            <label class="form-label">DB Port</label>
-            <input type="number" class="form-input" id="dbPort" placeholder="5432">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Database Name</label>
-            <input type="text" class="form-input" id="dbName" placeholder="ghanafront">
-          </div>
-          <div class="form-group">
-            <label class="form-label">DB User</label>
-            <input type="text" class="form-input" id="dbUser" placeholder="admin">
-          </div>
-          <div class="form-group">
-            <label class="form-label">DB Password</label>
-            <input type="password" class="form-input" id="dbPassword" placeholder="••••••••">
-          </div>
-          <div class="form-group">
-            <label class="form-label">DB Type</label>
-            <select class="form-input" id="dbType">
-              <option value="postgres" selected>PostgreSQL</option>
-              <option value="mysql">MySQL</option>
-              <option value="sqlite">SQLite</option>
-            </select>
+            <label class="form-label">Backend API Base URL</label>
+            <input type="url" class="form-input" id="apiBase" placeholder="https://ghanaever-new.onrender.com">
+            <span class="form-hint">e.g. https://ghanaever-new.onrender.com</span>
           </div>
         </div>
-        <div class="db-actions">
+        <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;align-items:center">
           <button class="admin-save-btn" onclick="testDbConnection()">
-            <span id="dbTestText">Test Connection</span>
+            <span id="dbTestText">Test API Connection</span>
+          </button>
+          <button class="admin-save-btn" style="background:var(--subtle-bg)" onclick="triggerScraper()">
+            <span id="scraperBtnText">▶ Run Scraper Now</span>
           </button>
           <div id="dbTestResult" class="db-result"></div>
         </div>
       </div>
       <div class="admin-card">
-        <h3 class="admin-card-title">API Configuration</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Backend API Base URL</label>
-            <input type="url" class="form-input" id="apiBase" placeholder="https://api.ghanafront.com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">API Key / Secret <span class="form-opt">for internal requests</span></label>
-            <input type="password" class="form-input" id="apiKey" placeholder="sk-••••••••••••">
-          </div>
-        </div>
-      </div>
-      <div class="admin-card">
         <h3 class="admin-card-title">System Status</h3>
+        <p class="admin-card-desc" style="margin-bottom:16px">Click "Refresh Status" to check live system health.</p>
         <div class="status-grid">
           <div class="status-item">
             <div class="status-dot status-green"></div>
             <span>Frontend</span>
             <span class="status-val">Running</span>
+          </div>
+          <div class="status-item">
+            <div class="status-dot" id="apiStatusDot" style="background:var(--subtle)"></div>
+            <span>Backend API</span>
+            <span class="status-val" id="apiStatusVal">Unknown</span>
           </div>
           <div class="status-item">
             <div class="status-dot" id="dbStatusDot" style="background:var(--subtle)"></div>
@@ -404,16 +378,33 @@
           </div>
           <div class="status-item">
             <div class="status-dot" id="scraperStatusDot" style="background:var(--subtle)"></div>
-            <span>Scraper</span>
+            <span>Scraper (Last Run)</span>
             <span class="status-val" id="scraperStatusVal">Unknown</span>
           </div>
           <div class="status-item">
-            <div class="status-dot status-green"></div>
-            <span>RSS Config</span>
-            <span class="status-val">Active</span>
+            <div class="status-dot" id="articlesStatusDot" style="background:var(--subtle)"></div>
+            <span>Total Articles</span>
+            <span class="status-val" id="articlesStatusVal">—</span>
           </div>
         </div>
+        <button class="admin-save-btn" style="margin-top:16px" onclick="refreshStatus()">
+          <span id="refreshBtnText">⟳ Refresh Status</span>
+        </button>
+        <div id="statusError" style="margin-top:10px;font-size:12px;color:#ef4444"></div>
       </div>
+      <div class="admin-card">
+        <h3 class="admin-card-title">Database Info</h3>
+        <p class="admin-card-desc">Your database is managed by <strong>Supabase</strong> (PostgreSQL). No manual DB connection needed.</p>
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+          <a href="https://supabase.com/dashboard" target="_blank" class="admin-save-btn" style="text-decoration:none">Open Supabase Dashboard ↗</a>
+          <a href="https://dashboard.render.com" target="_blank" class="admin-save-btn" style="text-decoration:none;background:var(--subtle-bg)">Open Render Dashboard ↗</a>
+        </div>
+      </div>
+      <!-- Hidden legacy fields to avoid JS errors -->
+      <input type="hidden" id="dbHost" value="supabase">
+      <input type="hidden" id="dbPort" value="5432">
+      <input type="hidden" id="dbName" value="postgres">
+      <input type="hidden" id="dbUser" value="postgres">
     </div>
 
   </main>
@@ -754,22 +745,88 @@ function renderTickerPreview() {
     </div>`;
 }
 
-/* ── DB test ───────────────────────────────────────────────────── */
+/* ── API helpers ───────────────────────────────────────────────── */
+function getApiBase() {
+  const saved = getSiteConfig().apiBase || document.getElementById('apiBase').value.trim();
+  return (saved || 'https://ghanaever-new.onrender.com').replace(/\/$/, '');
+}
+
 async function testDbConnection() {
   const btn = document.getElementById('dbTestText');
   const result = document.getElementById('dbTestResult');
-  const dot = document.getElementById('dbStatusDot');
-  const val = document.getElementById('dbStatusVal');
   btn.textContent = 'Testing…';
   result.textContent = '';
   result.className = 'db-result';
-  await new Promise(r => setTimeout(r, 1200));
-  // Simulate — in prod this would hit /api/db/test
-  btn.textContent = 'Test Connection';
-  result.textContent = '✗ Could not connect (no backend running in demo mode)';
-  result.className = 'db-result db-error';
-  dot.style.background = '#ef4444';
-  val.textContent = 'Offline';
+  const base = getApiBase();
+  try {
+    const res = await fetch(base + '/health', { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+    btn.textContent = 'Test API Connection';
+    if (res.ok) {
+      result.textContent = '✓ Connected — API is live (' + (data.timestamp || 'ok') + ')';
+      result.className = 'db-result db-ok';
+    } else {
+      result.textContent = '✗ API returned an error';
+      result.className = 'db-result db-error';
+    }
+  } catch(e) {
+    btn.textContent = 'Test API Connection';
+    result.textContent = '✗ Could not reach API: ' + e.message;
+    result.className = 'db-result db-error';
+  }
+}
+
+async function refreshStatus() {
+  const btn = document.getElementById('refreshBtnText');
+  const errEl = document.getElementById('statusError');
+  btn.textContent = '⟳ Checking…';
+  errEl.textContent = '';
+  const base = getApiBase();
+
+  function setDot(dotId, valId, ok, label) {
+    document.getElementById(dotId).style.background = ok ? '#22c55e' : '#ef4444';
+    document.getElementById(valId).textContent = label;
+  }
+
+  try {
+    const res = await fetch(base + '/health', { signal: AbortSignal.timeout(8000) });
+    setDot('apiStatusDot', 'apiStatusVal', res.ok, res.ok ? 'Online' : 'Error');
+  } catch { setDot('apiStatusDot', 'apiStatusVal', false, 'Offline'); }
+
+  try {
+    const res = await fetch(base + '/api/status', { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const data = await res.json();
+      setDot('dbStatusDot', 'dbStatusVal', true, 'Connected');
+      document.getElementById('articlesStatusDot').style.background = '#22c55e';
+      document.getElementById('articlesStatusVal').textContent = (data.article_count ?? '—') + ' articles';
+      if (data.last_scrape) {
+        const ago = Math.round((Date.now() - new Date(data.last_scrape)) / 60000);
+        setDot('scraperStatusDot', 'scraperStatusVal', true, ago + 'm ago');
+      } else {
+        setDot('scraperStatusDot', 'scraperStatusVal', false, 'No data yet');
+      }
+    } else { setDot('dbStatusDot', 'dbStatusVal', false, 'Error'); }
+  } catch { setDot('dbStatusDot', 'dbStatusVal', false, 'Unreachable'); }
+
+  btn.textContent = '⟳ Refresh Status';
+}
+
+async function triggerScraper() {
+  const btn = document.getElementById('scraperBtnText');
+  const base = getApiBase();
+  if (!base) { alert('Set the Backend API Base URL first.'); return; }
+  btn.textContent = '⏳ Running…';
+  try {
+    const res = await fetch(base + '/api/scrape', { method: 'POST', signal: AbortSignal.timeout(30000) });
+    const data = await res.json();
+    btn.textContent = '▶ Run Scraper Now';
+    alert('Scraper done! ' + (data.new_articles ?? 0) + ' new articles added.');
+    refreshStatus();
+  } catch(e) {
+    btn.textContent = '▶ Run Scraper Now';
+    alert('Scraper error: ' + e.message);
+  }
 }
 
 /* ── Boot ──────────────────────────────────────────────────────── */
