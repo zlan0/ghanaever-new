@@ -111,6 +111,7 @@
     document.getElementById('trendingRoot').innerHTML = buildTrendingSidebar(MOCK_TRENDING);
     document.getElementById('chatRoot').innerHTML     = buildChatbot();
     renderSidebar();
+    fetchSidebarCounts();
     renderTicker();
 
     applyDark();
